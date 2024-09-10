@@ -2,59 +2,69 @@
 # // 2024-09-09 Mon 14:07
 
 
-# declare -rx color_light_green='\033[1;32m'
-declare -i N=4                   # in seconds; sleep time; eg 4 seconds
-declare -i PING_EVERY=5          # In minutes; Interval to ping remote; eg every 5 minutes
-declare -i N_COUNTER=0           # N counter;
+declare -i N=4
+  # in seconds; sleep time; eg 4 seconds
+declare -i PING_EVERY=5
+  # In minutes; Interval to ping remote; eg every 5 minutes; debian sudo timeout should be 15min
+declare -i N_COUNTER=0
+  # N counter;
 
-# How many N second loops are required to get to PING_EVERY in minutes?
-# Given N (in seconds), PING_EVERY (in minutes), how many counter loops it takes to achieve PING_EVERY
-# PING_TIME=$((60/$N * $PING_EVERY ))
 PING_TIME=$((61 * $PING_EVERY / $N ))  # lsp says this order makes result more precise
-# echo $PING_TIME
-# exit
+  # How many N second loops are required to get to PING_EVERY in minutes?
+  # Given N (in seconds), PING_EVERY (in minutes), how many counter loops it takes to achieve PING_EVERY
+  # PING_TIME=$((60/$N * $PING_EVERY ))
 
+
+# bash commands here:
+function do_something() {
+
+    # echo "do something 1"
+    # echo "do something 2"
+
+    git add --all
+    # git commit --amend --allow-empty --no-edit
+      # --allow-empty may be necessary if you make a change; commit/push;
+      # then reverse that exact change and want to commit/push;
+    git commit --amend --no-edit
+    git push --force
+    tmux send-keys -t 0 "git pull --rebase" enter
+    tmux send-keys -t 0 "url" enter
+
+    echo -n "Git repo updated | ";
+    echo $(date +%H:%M:%S);
+
+}
+
+function begin_watch() {
+
+    while true; do
+
+        GRESULT=$(git status -s)
+          # get git status; if no changes, then blank;
+
+        if [[ -n $GRESULT ]]; then
+
+            N_COUNTER=0  # Reset N_COUNTER
+            echo "Git changed. ⚡️";
+            do_something
+
+        else
+            echo -n ". ";
+            (( N_COUNTER++ ))
+            if [[ "$N_COUNTER" -gt "$PING_TIME" ]]; then
+                tmux send-keys -t 0 "sudo echo ping" enter
+                echo -n "ping remote "
+                echo -n "$(date +%M) ";
+                N_COUNTER=0
+            fi
+        fi
+        sleep $N
+    done
+}
 
 git status
+begin_watch
 
-while true; do
-
-    GRESULT=$(git status -s)
-      # get git status; if no changes, then blank;
-
-    if [[ -n $GRESULT ]]; then
-
-        echo "git changed. committing changes...";
-
-        #---- Commands to run  -----
-
-        git add --all
-        git commit --amend --no-edit
-        git push --force
-        tmux send-keys -t 0 "git pull --rebase" enter
-        tmux send-keys -t 0 "url" enter
-
-        echo -n "git repo updated | ";
-        echo $(date +%H:%M:%S);
-
-
-        #---- End commands -----
-
-        N_COUNTER=0  # Reset N_COUNTER
-
-    else
-        echo -n ". ";
-        (( N_COUNTER++ ))
-        if [[ "$N_COUNTER" -gt "$PING_TIME" ]]; then
-            tmux send-keys -t 0 "sudo echo ping" enter
-            echo -n "ping remote "
-            N_COUNTER=0
-        fi
-    fi
-
-    # sleep "$1"
-    sleep $N
-done
 
 
 
