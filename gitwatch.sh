@@ -3,11 +3,17 @@
 
 
 # declare -rx color_light_green='\033[1;32m'
-declare -i N=2            # Sleep in integer seconds
-declare -i PINGTIME=150   # Interval to ping remote
-declare -i PING_COUNTER=0        # Ping counter
+declare -i N=4                   # in seconds; sleep time; eg 4 seconds
+declare -i PING_EVERY=5          # In minutes; Interval to ping remote; eg every 5 minutes
+declare -i N_COUNTER=0           # N counter;
 
-  # 150, with N=2, should be about 5 minutes
+# How many N second loops are required to get to PING_EVERY in minutes?
+# Given N (in seconds), PING_EVERY (in minutes), how many counter loops it takes to achieve PING_EVERY
+# PING_TIME=$((60/$N * $PING_EVERY ))
+PING_TIME=$((61 * $PING_EVERY / $N ))  # lsp says this order makes result more precise
+# echo $PING_TIME
+# exit
+
 
 git status
 
@@ -20,7 +26,7 @@ while true; do
 
         echo "git changed. committing changes...";
 
-        #---- Commands to run:
+        #---- Commands to run  -----
 
         git add --all
         git commit --amend --no-edit
@@ -32,17 +38,17 @@ while true; do
         echo $(date +%H:%M:%S);
 
 
-        #---- End commands
+        #---- End commands -----
 
-        PING_COUNTER=0  # Reset PING_COUNTER
+        N_COUNTER=0  # Reset N_COUNTER
 
     else
         echo -n ". ";
-        (( PING_COUNTER++ ))
-        if [[ "$PING_COUNTER" -gt "$PINGTIME" ]]; then
+        (( N_COUNTER++ ))
+        if [[ "$N_COUNTER" -gt "$PING_TIME" ]]; then
             tmux send-keys -t 0 "sudo echo ping" enter
             echo -n "ping remote "
-            PING_COUNTER=0
+            N_COUNTER=0
         fi
     fi
 
