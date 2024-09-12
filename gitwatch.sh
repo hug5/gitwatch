@@ -55,7 +55,9 @@ DESCRIPTION
     git project locally and update your remote
     automatically.
 
-    Requirements: Tmux
+    Pings remote server every 10min. to keep sudo alive.
+    Requires Tmux.
+
 
 EOF
 _show_usage
