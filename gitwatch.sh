@@ -18,7 +18,7 @@ declare PANE=0
 declare -i PING_TIME=0
 
 
-# bash commands here:
+# custom bash commands here:
 function _do_something() {
 
     git add --all
@@ -31,17 +31,10 @@ function _do_something() {
     # tmux send-keys -t top "url" enter
     tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
     tmux send-keys -t ${WINDOW}.${PANE} "url" enter
-
 }
 
 
 function _show_help() {
-    # local this_script_name
-    # this_script_name=$(basename "$0")
-      # This seems more succinct than above with awk;
-      # basename : strip directory and suffix from filename
-      # If not use basename, will give me full path
-    # echo "    $this_script_name [-w W] [-p PANE] [-i INTERVAL]" 1>&2
 cat << EOF
 NAME
     Gitwatch: Watch git files for changes and then do something.
@@ -63,16 +56,17 @@ DESCRIPTION
     automatically.
 
     Requirements: Tmux
+
 EOF
 _show_usage
 }
 
 function _show_usage() {
 cat << EOF
-USAGE"
+USAGE
     $ gitwatch [-w W] [-p PANE] [-i INTERVAL]
 
-EXAMPLE:
+EXAMPLE
     $ gitwatch
       # Use default settings: watch 3 second intervals; pull remote from pane 0 in current active window.
     $ gitwatch -w 2 -p 0 -i 5
@@ -100,8 +94,6 @@ function _calc_ping_time() {
 }
 
 
-
-
 # Check flags:
 function _check_flags() {
     local OPTIND                               # Make this a local; is the index of the next argument index, not current;
@@ -117,7 +109,7 @@ function _check_flags() {
             PANE="${OPTARG}"
             if [[ $PANE -lt 0 || ! "$PANE" =~ $regex_isa_num ]]; then
                 echo "Error: -p should be an integer >= 0."
-                _show_usage
+                _show_usage; exit;
             fi
 
             ;;
@@ -125,21 +117,21 @@ function _check_flags() {
             INTERVAL="${OPTARG}"
             if [[ $INTERVAL -lt 1 || ! "$INTERVAL" =~ $regex_isa_num ]]; then
                 echo "Error: -i should be an integer > 0."
-                _show_usage
+                _show_usage; exit;
             fi
             ;;
           h)
-            _show_help;
+            _show_help; exit;
             ;;
           :)                        # If flag has expected argument omitted;
             echo "Error: -"${OPTARG}" requires an argument."
-            _show_usage;
+            _show_usage; exit;
             ;;
 
           # \?)
           *)                        # If unknown (any other) option:
             echo "Error: Unknown option."
-            _show_usage
+            _show_usage; exit;
             ;;
         esac
     done
@@ -147,10 +139,6 @@ function _check_flags() {
 
 
 function _begin_watch() {
-
-# echo $INTERVAL
-# echo $WINDOW
-# echo $PANE
 
     while true; do
 
