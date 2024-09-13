@@ -156,8 +156,11 @@ function _begin_watch() {
             _do_something
 
         else
-            echo -n ". ";
-            (( N_COUNTER++ ))
+            echo -n ". "
+            # (( N_COUNTER+=1 ))  # this works
+            # (( N_COUNTER++ ))   # When set -e, seems to hang here; but okay if N=1 initially?? Not sure why;
+            (( ++N_COUNTER ))   # this works
+
             if [[ "$N_COUNTER" -gt "$PING_TIME" ]]; then
                 # tmux send-keys -t 0 "sudo echo ping" enter
                 tmux send-keys -t ${WINDOW}.${PANE} "sudo echo ping" enter
@@ -174,11 +177,6 @@ function _begin_watch() {
 _check_flags "$@"
 _calc_ping_time
 
-# echo $PING_EVERY
-# echo $PANE
-# echo $INTERVAL
-# echo $PING_TIME
-# exit
 
 tmux send-keys -t ${WINDOW}.${PANE} "# Gitwatch Ready" enter
 
