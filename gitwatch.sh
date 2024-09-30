@@ -3,6 +3,7 @@
 set -e
 # The set -e option instructs the shell to exit immediately if any command or pipeline returns a non-zero exit status, which usually indicates an error or failure.
 
+# ---------------------------------------------------------------
 
 declare -i INTERVAL=3
   # in seconds; sleep interval time; eg 3 seconds
@@ -18,23 +19,32 @@ declare PANE=0
 declare -i PING_TIME=0
 
 
-# custom bash commands here:
-function _do_something() {
+# ---------------------------------------------------------------
 
+# custom bash commands here:
+function do_something() {
+
+    # local action:
     git add --all
     # git commit --amend --allow-empty --no-edit
       # --allow-empty may be necessary if you make a change; commit/push;
       # then reverse that exact change and want to commit/push;
     git commit --amend --no-edit
     git push --force
+
+    # remote action:
     # tmux send-keys -t top "git pull --rebase" enter
     # tmux send-keys -t top "url" enter
     tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
     tmux send-keys -t ${WINDOW}.${PANE} "url" enter
+
+    announce_remote_ready
 }
 
 
-function _show_help() {
+# ---------------------------------------------------------------
+
+function show_help() {
 cat << EOF
 NAME
     Gitwatch: Watch git files for changes and then do something.
@@ -58,12 +68,11 @@ DESCRIPTION
     Pings remote server every 10min. to keep sudo alive.
     Requires Tmux.
 
-
 EOF
-_show_usage
+show_usage
 }
 
-function _show_usage() {
+function show_usage() {
 cat << EOF
 USAGE
     $ gitwatch [-w W] [-p PANE] [-i INTERVAL]
@@ -84,8 +93,10 @@ FLAGS
 EOF
 }
 
+# ---------------------------------------------------------------
 
-function _calc_ping_time() {
+
+function calc_ping_time() {
 
     PING_TIME=$(( 60 * $PING_EVERY / $INTERVAL ))
     # PING_TIME=$(( 60 / $INTERVAL * $PING_EVERY ))
@@ -97,7 +108,7 @@ function _calc_ping_time() {
 
 
 # Check flags:
-function _check_flags() {
+function check_flags() {
     local OPTIND                               # Make this a local; is the index of the next argument index, not current;
     local regex_isa_num='^[0-9]+$'             # Regex: match whole numbers only;
 
@@ -111,7 +122,7 @@ function _check_flags() {
             PANE="${OPTARG}"
             if [[ $PANE -lt 0 || ! "$PANE" =~ $regex_isa_num ]]; then
                 echo "Error: -p should be an integer >= 0."
-                _show_usage; exit;
+                show_usage; exit;
             fi
 
             ;;
@@ -119,28 +130,39 @@ function _check_flags() {
             INTERVAL="${OPTARG}"
             if [[ $INTERVAL -lt 1 || ! "$INTERVAL" =~ $regex_isa_num ]]; then
                 echo "Error: -i should be an integer > 0."
-                _show_usage; exit;
+                show_usage; exit;
             fi
             ;;
           h)
-            _show_help; exit;
+            show_help; exit;
             ;;
           :)                        # If flag has expected argument omitted;
             echo "Error: -"${OPTARG}" requires an argument."
-            _show_usage; exit;
+            show_usage; exit;
             ;;
 
           # \?)
           *)                        # If unknown (any other) option:
             echo "Error: Unknown option."
-            _show_usage; exit;
+            show_usage; exit;
             ;;
         esac
     done
 }
 
+function announce_local_watching() {
+    # Just a function to announce that script is ready and watching locally:
+    echo -n "🔥 Watching ${INTERVAL}s "
+}
 
-function _begin_watch() {
+function announce_remote_ready() {
+    # Sleep a bit because when touch url on remote, it takes a while for its message to ouput;
+    sleep 1
+    # Just a function to annount that remote pane is ready:
+    tmux send-keys -t ${WINDOW}.${PANE} "# 🧭 Gitwatch Ready" enter
+}
+
+function begin_watch() {
 
     while true; do
 
@@ -153,7 +175,10 @@ function _begin_watch() {
             # echo "Git changed ⚡️";
             # echo "Git changed ⭐";
             echo "☡  Git changed";
-            _do_something
+            do_something
+
+            echo "Done."
+            announce_local_watching
 
         else
             echo -n ". "
@@ -174,32 +199,34 @@ function _begin_watch() {
 }
 
 
-_check_flags "$@"
-_calc_ping_time
+# ---------------------------------------------------------------
 
-
-tmux send-keys -t ${WINDOW}.${PANE} "# Gitwatch Ready" enter
-
+check_flags "$@"
+calc_ping_time
 git status
-echo -n "Watching ${INTERVAL}s "
-_begin_watch
-
+announce_remote_ready
+announce_local_watching
+begin_watch
 
 
 
 #------------------------------------------------------
 
+
+
 ## TODO
-  # Enable custom time; eg: $ gitwatch 4
   # flags to do ca or cm commits; but since this is a monitor, that could have limited usefulness;
-  # set timer with flag
   # Could put the command to run in a config file; but that might be overcomplicating a simple script
-  # Every so often run a command in pane 0 in order to keep the "sudo" status alive;
 
   # Flag for specific functions:
     # -p : to run remote pull from remote server
     # But again, if you don't want this, why would you be running this script??
     # You're running this because you want to add amend, commit, push and pull;
+
+## DONE
+  # Every so often run a command in pane 0 in order to keep the "sudo" status alive;
+  # Enable custom time; eg: $ gitwatch -i 4
+
 
 #------------------------------------------------------
 
@@ -222,9 +249,6 @@ _begin_watch
 
 
   #----------------
-
-
-
 
     # $ tmux send-keys -t 1.0 "url" Enter
 
