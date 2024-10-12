@@ -38,10 +38,12 @@ function do_something() {
         # embed the contents of the source map file in the generated CSS
         # Thise creates a process css file that is the original + source file; which is only marginally larger;
 
-    local SCSS1="jug/www/static/scss/style.container.scss"
-    local SCSS2="jug/www/static/css/style.min2.css"
+    local SCSS="jug/www/static/scss/style.container.scss"
+    local CSS="jug/www/static/css/style.min2.css"
 
-    sass --update --no-source-map --style=compressed "$SCSS1" "$SCSS2"
+    sass --update --no-source-map --style=compressed "$SCSS" "$CSS"
+
+    # sass --update --no-source-map --style=compressed "jug/www/static/scss/style.container.scss" "jug/www/static/css/style.min2.css"
 
 
     # local action:
@@ -55,10 +57,12 @@ function do_something() {
     # remote action:
     # tmux send-keys -t top "git pull --rebase" enter
     # tmux send-keys -t top "url" enter
+    tmux send-keys -t ${WINDOW}.${PANE} "git reset HEAD --hard" enter
+      # Undo scss deletes so that we can pull again;
     tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
     tmux send-keys -t ${WINDOW}.${PANE} "url" enter
-    # Delete the scss folder
     tmux send-keys -t ${WINDOW}.${PANE} "rm jug/www/static/scss/*" enter
+      # Delete the scss folder; but will have to reverse it to git pull again;
 
     announce_remote_ready
 }
