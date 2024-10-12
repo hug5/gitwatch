@@ -7,7 +7,7 @@ set -e
 
 declare -i INTERVAL=3
   # in seconds; sleep interval time; eg 3 seconds
-declare -i COMMAND_EVERY=0
+declare -i CUSTOM_COMMAND_EVERY=0
   # In minutes; Interval to run custom command;
   # If <= 0, then it's turned off;
 declare -i N_COUNTER=0
@@ -16,13 +16,18 @@ declare WINDOW=''
   # default unset; active window
 declare PANE=0
   # 0/top pane by default;
-declare -i COMMAND_TIME=0
+declare -i CUST_COMMAND_TIME=0
 
 
 # ---------------------------------------------------------------
 
 ## custom bash commands here on git change:
 function do_something() {
+
+    # while read -r line; do
+       # eval "$line"
+    # done < ./gitwatch.conf
+
 
     # sass options:
       # https://sass-lang.com/documentation/cli/dart-sass/
@@ -46,6 +51,7 @@ function do_something() {
     # sass --update --no-source-map --style=compressed "jug/www/static/scss/style.container.scss" "jug/www/static/css/style.min2.css"
 
 
+
     # local action:
     git add --all
     # git commit --amend --allow-empty --no-edit
@@ -59,8 +65,15 @@ function do_something() {
     # tmux send-keys -t top "url" enter
     tmux send-keys -t ${WINDOW}.${PANE} "git reset HEAD --hard" enter
       # Undo scss deletes so that we can pull again;
+    sleep 1
+      # Prob. not necessary, but commands are printed out below;
     tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
+    sleep 1
+
     tmux send-keys -t ${WINDOW}.${PANE} "url" enter
+    sleep 1
+
+
     tmux send-keys -t ${WINDOW}.${PANE} "rm jug/www/static/scss/*" enter
       # Delete the scss folder; but will have to reverse it to git pull again;
 
@@ -71,7 +84,8 @@ function do_something() {
 function run_custom_command() {
     # tmux send-keys -t ${WINDOW}.${PANE} "sudo echo ping" enter
     # echo -n "ping remote "
-    echo -n "🌀$(date +%H:%M) "
+    # echo -n "🌀$(date +%H:%M) "
+    echo -n "🌀 "
 }
 
 
@@ -133,7 +147,7 @@ FLAGS
     -w WINDOW     Tmux window, denoted by name or number.
     -p PANE       Tmux pane of your remote, denoted by number.
     -i N          Number > 0; Sleep interval between checks in seconds.
-    -c N          Number > 0; Run custom command ever N minutes.
+    -c N          Number > 0; Run custom command every N minutes.
     -h            This help.
 EOF
 }
@@ -141,14 +155,14 @@ EOF
 # ---------------------------------------------------------------
 
 
-function calc_command_time() {
+function calc_cust_command_time() {
 
-    COMMAND_TIME=$(( 60 * $COMMAND_EVERY / $INTERVAL ))
-    # COMMAND_TIME=$(( 60 / $INTERVAL * $COMMAND_EVERY ))
+    CUST_COMMAND_TIME=$(( 60 * $CUSTOM_COMMAND_EVERY / $INTERVAL ))
+    # CUST_COMMAND_TIME=$(( 60 / $INTERVAL * $CUSTOM_COMMAND_EVERY ))
       # lsp says this order makes result more precise
-      # How many N second loops are required to get to COMMAND_EVERY in minutes?
-      # Given N (in seconds), COMMAND_EVERY (in minutes), how many counter loops it takes to achieve COMMAND_EVERY
-      # COMMAND_TIME=$((60/$N * $COMMAND_EVERY ))
+      # How many N second loops are required to get to CUSTOM_COMMAND_EVERY in minutes?
+      # Given N (in seconds), CUSTOM_COMMAND_EVERY (in minutes), how many counter loops it takes to achieve CUSTOM_COMMAND_EVERY
+      # CUST_COMMAND_TIME=$((60/$N * $CUSTOM_COMMAND_EVERY ))
 }
 
 
@@ -179,8 +193,8 @@ function check_flags() {
             fi
             ;;
           c)
-            COMMAND_EVERY="${OPTARG}"
-            if [[ $COMMAND_EVERY -lt 1 || ! "$COMMAND_EVERY" =~ $regex_isa_num ]]; then
+            CUSTOM_COMMAND_EVERY="${OPTARG}"
+            if [[ $CUSTOM_COMMAND_EVERY -lt 1 || ! "$CUSTOM_COMMAND_EVERY" =~ $regex_isa_num ]]; then
                 echo "Error: -i should be an integer > 0."
                 show_usage; exit;
             fi
@@ -240,7 +254,7 @@ function begin_watch() {
 
 
             # run custom command;
-            if [[ "$COMMAND_TIME" -gt 0 && "$N_COUNTER" -gt "$COMMAND_TIME" ]]; then
+            if [[ "$CUST_COMMAND_TIME" -gt 0 && "$N_COUNTER" -gt "$CUST_COMMAND_TIME" ]]; then
                 run_custom_command
                 N_COUNTER=0
             fi
@@ -255,7 +269,7 @@ function begin_watch() {
 # ---------------------------------------------------------------
 
 check_flags "$@"
-calc_command_time
+calc_cust_command_time
 git status
 announce_remote_ready
 announce_local_watching
@@ -268,8 +282,19 @@ begin_watch
 
 
 ## TODO
+
+  # // 2024-10-12 Sat 15:16
+  # Think I need to put the commands in a separate sh file;
+  # python and sh project requirements are too different;
+  # eg, With python, I may want to delete the scss files in the remote;
+  # Just with that single addition, it's a hassle to switch between simple sh projects and others;
+
+  # More practical to remove the "custom command" feature; having 2 external sh files isn't very convenient, though possible to do;
+
   # flags to do ca or cm commits; but since this is a monitor, that could have limited usefulness;
   # Could put the command to run in a config file; but that might be overcomplicating a simple script
+  # Perhaps more practical to have a limit of when ca does a cm; too many cas don't seem to be good;
+
 
   # Flag for specific functions:
     # -p : to run remote pull from remote server
@@ -324,5 +349,5 @@ begin_watch
     # The problemwith this tmux send-keys command is that it sends to pane zero of the active window; if you switch windows, it will send the command to pane 0 of that active window; not ideal!
     #
 
-#    echo -n "Git repo updated | ";
-#    echo $(date +%H:%M:%S);
+  #    echo -n "Git repo updated | ";
+  #    echo $(date +%H:%M:%S);
