@@ -7,22 +7,42 @@ set -e
 
 declare -i INTERVAL=3
   # in seconds; sleep interval time; eg 3 seconds
-declare -i PING_EVERY=10
-  # In minutes; Interval to ping remote; eg every 5 minutes;
-  # debian sudo timeout should be 15min
+declare -i COMMAND_EVERY=0
+  # In minutes; Interval to run custom command;
+  # If <= 0, then it's turned off;
 declare -i N_COUNTER=0
   # N counter;
 declare WINDOW=''
   # default unset; active window
 declare PANE=0
   # 0/top pane by default;
-declare -i PING_TIME=0
+declare -i COMMAND_TIME=0
 
 
 # ---------------------------------------------------------------
 
-# custom bash commands here:
+## custom bash commands here on git change:
 function do_something() {
+
+    # sass options:
+      # https://sass-lang.com/documentation/cli/dart-sass/
+      # sass --w --style=compressed style.container.scss style.min2.css
+      # sass --watch ---poll --style=compressed style.container.scss style.min2.css
+      # --no-source-map
+      # --update
+        # compile stylesheets whose dependencies have been modified more recently than the corresponding CSS file was generated
+      # --embed-sources
+        # embed the entire contents of the Sass files that contributed to the generated CSS in the source map;
+        # this creates a surprisingly very large source file!
+      # --embed-source-map
+        # embed the contents of the source map file in the generated CSS
+        # Thise creates a process css file that is the original + source file; which is only marginally larger;
+
+    local SCSS1="jug/www/static/scss/style.container.scss"
+    local SCSS2="jug/www/static/css/style.min2.css"
+
+    sass --update --no-source-map --style=compressed "$SCSS1" "$SCSS2"
+
 
     # local action:
     git add --all
@@ -37,8 +57,17 @@ function do_something() {
     # tmux send-keys -t top "url" enter
     tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
     tmux send-keys -t ${WINDOW}.${PANE} "url" enter
+    # Delete the scss folder
+    tmux send-keys -t ${WINDOW}.${PANE} "rm jug/www/static/scss/*" enter
 
     announce_remote_ready
+}
+
+## Custom command every N minutes
+function run_custom_command() {
+    # tmux send-keys -t ${WINDOW}.${PANE} "sudo echo ping" enter
+    # echo -n "ping remote "
+    echo -n "🌀$(date +%H:%M) "
 }
 
 
@@ -50,10 +79,14 @@ NAME
     Gitwatch: Watch git files for changes and then do something.
 
 DESCRIPTION
-    Gitwatch can run your custom bash commands when git
+
+    Gitwatch can run custom bash commands when git
     files change. Specifically, it is designed to add,
     commit, and push changes to your git repo; and
     then pull git changes from your remote server.
+
+    This would typically require 2 active panes running
+    Tmux.
 
     For example, you would SSH into your remote in
     pane 0, and run gitwatch in a separate pane. When
@@ -65,8 +98,13 @@ DESCRIPTION
     git project locally and update your remote
     automatically.
 
-    Pings remote server every 10min. to keep sudo alive.
-    Requires Tmux.
+    Optionally, can also run a command every N minutes.
+    You can use to this feature to keep sudo active on
+    the remote or for any other custom activities.
+
+    Again, this script typically works in Tmux,
+    assuming you want to run commands in two console
+    windows.
 
 EOF
 show_usage
@@ -75,20 +113,23 @@ show_usage
 function show_usage() {
 cat << EOF
 USAGE
-    $ gitwatch [-w W] [-p PANE] [-i INTERVAL]
+    $ gitwatch [-w W] [-p PANE] [-i INTERVAL] [-c Minutes]
 
 EXAMPLE
     $ gitwatch
       # Use default settings: watch 3 second intervals; pull remote from pane 0 in current active window.
     $ gitwatch -w 2 -p 0 -i 5
-      # set window to 2; remote pane to 0; interval at 5 seconds
+      # set window to 2; remote pane to 0; interval at 5 seconds.
     $ gitwatch -w vps -p 2
-      # set window to vps; remote pane to 2; interval at default, 3 seconds
+      # set window to vps; remote pane to 2; interval at default, 3 seconds.
+    $ gitwatch -w 1 -p 0 -c 7
+      # Set window to 1; remote pane to 0; and run custom command every 7 minutes.
 
 FLAGS
     -w WINDOW     Tmux window, denoted by name or number.
     -p PANE       Tmux pane of your remote, denoted by number.
-    -i INTERVAL   Sleep interval between checks in seconds.
+    -i N          Number > 0; Sleep interval between checks in seconds.
+    -c N          Number > 0; Run custom command ever N minutes.
     -h            This help.
 EOF
 }
@@ -96,14 +137,14 @@ EOF
 # ---------------------------------------------------------------
 
 
-function calc_ping_time() {
+function calc_command_time() {
 
-    PING_TIME=$(( 60 * $PING_EVERY / $INTERVAL ))
-    # PING_TIME=$(( 60 / $INTERVAL * $PING_EVERY ))
+    COMMAND_TIME=$(( 60 * $COMMAND_EVERY / $INTERVAL ))
+    # COMMAND_TIME=$(( 60 / $INTERVAL * $COMMAND_EVERY ))
       # lsp says this order makes result more precise
-      # How many N second loops are required to get to PING_EVERY in minutes?
-      # Given N (in seconds), PING_EVERY (in minutes), how many counter loops it takes to achieve PING_EVERY
-      # PING_TIME=$((60/$N * $PING_EVERY ))
+      # How many N second loops are required to get to COMMAND_EVERY in minutes?
+      # Given N (in seconds), COMMAND_EVERY (in minutes), how many counter loops it takes to achieve COMMAND_EVERY
+      # COMMAND_TIME=$((60/$N * $COMMAND_EVERY ))
 }
 
 
@@ -112,7 +153,7 @@ function check_flags() {
     local OPTIND                               # Make this a local; is the index of the next argument index, not current;
     local regex_isa_num='^[0-9]+$'             # Regex: match whole numbers only;
 
-    while getopts ":hw:p:i:" OPTIONS; do       # Loop: Get the next option;
+    while getopts ":hw:p:i:c:" OPTIONS; do       # Loop: Get the next option;
         case "${OPTIONS}" in
 
           w)
@@ -133,6 +174,14 @@ function check_flags() {
                 show_usage; exit;
             fi
             ;;
+          c)
+            COMMAND_EVERY="${OPTARG}"
+            if [[ $COMMAND_EVERY -lt 1 || ! "$COMMAND_EVERY" =~ $regex_isa_num ]]; then
+                echo "Error: -i should be an integer > 0."
+                show_usage; exit;
+            fi
+            ;;
+
           h)
             show_help; exit;
             ;;
@@ -159,7 +208,7 @@ function announce_remote_ready() {
     # Sleep a bit because when touch url on remote, it takes a while for its message to ouput;
     sleep 1
     # Just a function to annount that remote pane is ready:
-    tmux send-keys -t ${WINDOW}.${PANE} "# 🧭 Gitwatch Ready" enter
+    tmux send-keys -t ${WINDOW}.${PANE} "#- 🧭 Gitwatch Ready" enter
 }
 
 function begin_watch() {
@@ -172,8 +221,7 @@ function begin_watch() {
         if [[ -n $GRESULT ]]; then
 
             N_COUNTER=0  # Reset N_COUNTER
-            # echo "Git changed ⚡️";
-            # echo "Git changed ⭐";
+
             echo "☡  Git changed";
             do_something
 
@@ -186,13 +234,14 @@ function begin_watch() {
             # (( N_COUNTER++ ))   # When set -e, seems to hang here; but okay if N=1 initially?? Not sure why;
             (( ++N_COUNTER ))   # this works
 
-            if [[ "$N_COUNTER" -gt "$PING_TIME" ]]; then
-                # tmux send-keys -t 0 "sudo echo ping" enter
-                tmux send-keys -t ${WINDOW}.${PANE} "sudo echo ping" enter
-                echo -n "ping remote "
-                echo -n "$(date +%M) ";
+
+            # run custom command;
+            if [[ "$COMMAND_TIME" -gt 0 && "$N_COUNTER" -gt "$COMMAND_TIME" ]]; then
+                run_custom_command
                 N_COUNTER=0
             fi
+
+
         fi
         sleep $INTERVAL
     done
@@ -202,7 +251,7 @@ function begin_watch() {
 # ---------------------------------------------------------------
 
 check_flags "$@"
-calc_ping_time
+calc_command_time
 git status
 announce_remote_ready
 announce_local_watching
@@ -224,6 +273,11 @@ begin_watch
     # You're running this because you want to add amend, commit, push and pull;
 
 ## DONE
+
+  # // 2024-10-11 Fri 19:28
+  # Remove this ping sudo features;
+  # add sass command
+
   # Every so often run a command in pane 0 in order to keep the "sudo" status alive;
   # Enable custom time; eg: $ gitwatch -i 4
 
@@ -231,6 +285,9 @@ begin_watch
 #------------------------------------------------------
 
 ## Notes
+
+  # Don't think I need to ping the server in order to keep sudo alive; don't seem to need it if I'm "touching" a local file, not a root file; Should I keep the option available? Or just remove it??
+
   # Was originally trying to do this using the watch command;
   # But was having trying to get it to run the inline bash command; and or run a function within bash, which it can't do;
   # then realized that I can just use sleep and do a loop instead!
@@ -247,6 +304,10 @@ begin_watch
   #     echo "git same"; \
   # fi
 
+  #----------------
+
+  # echo "Git changed ⚡️";
+  # echo "Git changed ⭐";
 
   #----------------
 
