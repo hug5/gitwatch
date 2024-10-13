@@ -5,9 +5,16 @@ set -e
 
 # ---------------------------------------------------------------
 
+declare GW_FILE='gw-command.sh'
+  # The conf command sh file looked for
+
+declare OPEN_FILE_PATH=''
+  # path to custom shell command file
+declare SH_FILE=''
+  # Contents of sh file
 declare -i INTERVAL=3
   # in seconds; sleep interval time; eg 3 seconds
-declare -i CUSTOM_COMMAND_EVERY=0
+declare -i PERIODIC_COMMAND_INTERVAL=10
   # In minutes; Interval to run custom command;
   # If <= 0, then it's turned off;
 declare -i N_COUNTER=0
@@ -16,7 +23,9 @@ declare WINDOW=''
   # default unset; active window
 declare PANE=0
   # 0/top pane by default;
-declare -i CUST_COMMAND_TIME=0
+declare -i PERIODIC_COMMAND_TIME=0
+  # Given the INTERVAL, how many such intervals
+  # will make it == PERIODIC_COMMAND_INTERVAL
 
 
 # ---------------------------------------------------------------
@@ -24,68 +33,87 @@ declare -i CUST_COMMAND_TIME=0
 ## custom bash commands here on git change:
 function do_something() {
 
-    # while read -r line; do
-       # eval "$line"
-    # done < ./gitwatch.conf
+    # echo "●"
 
-
-    # sass options:
-      # https://sass-lang.com/documentation/cli/dart-sass/
-      # sass --w --style=compressed style.container.scss style.min2.css
-      # sass --watch ---poll --style=compressed style.container.scss style.min2.css
-      # --no-source-map
-      # --update
-        # compile stylesheets whose dependencies have been modified more recently than the corresponding CSS file was generated
-      # --embed-sources
-        # embed the entire contents of the Sass files that contributed to the generated CSS in the source map;
-        # this creates a surprisingly very large source file!
-      # --embed-source-map
-        # embed the contents of the source map file in the generated CSS
-        # Thise creates a process css file that is the original + source file; which is only marginally larger;
-
-    local SCSS="jug/www/static/scss/style.container.scss"
-    local CSS="jug/www/static/css/style.min2.css"
-
-    sass --update --no-source-map --style=compressed "$SCSS" "$CSS"
-
-    # sass --update --no-source-map --style=compressed "jug/www/static/scss/style.container.scss" "jug/www/static/css/style.min2.css"
-
-
-
-    # local action:
-    git add --all
-    # git commit --amend --allow-empty --no-edit
-      # --allow-empty may be necessary if you make a change; commit/push;
-      # then reverse that exact change and want to commit/push;
-    git commit --amend --no-edit
-    git push --force
-
-    # remote action:
-    # tmux send-keys -t top "git pull --rebase" enter
-    # tmux send-keys -t top "url" enter
-    tmux send-keys -t ${WINDOW}.${PANE} "git reset HEAD --hard" enter
-      # Undo scss deletes so that we can pull again;
-    sleep 1
-      # Prob. not necessary, but commands are printed out below;
-    tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
-    sleep 1
-
-    tmux send-keys -t ${WINDOW}.${PANE} "url" enter
-    sleep 1
-
-
-    tmux send-keys -t ${WINDOW}.${PANE} "rm jug/www/static/scss/*" enter
-      # Delete the scss folder; but will have to reverse it to git pull again;
+    while read -r line; do
+        line=$(echo "$line" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/")
+        eval "$line"
+    done <<< "$SH_FILE"
 
     announce_remote_ready
-}
 
-## Custom command every N minutes
-function run_custom_command() {
-    # tmux send-keys -t ${WINDOW}.${PANE} "sudo echo ping" enter
-    # echo -n "ping remote "
-    # echo -n "🌀$(date +%H:%M) "
-    echo -n "🌀 "
+    # --------------------------------------
+
+      # while read -r line; do
+         # eval "$line"
+      # done < ./gitwatch.conf
+
+      # sed -i 's/okay/great/g' $LINE
+      # $ var=$(sed "s/OldText/NewText/" <<< $var)
+      # $ echo $var
+      # This line is with NewText
+
+      # $ echo howtogonk | sed 's/gonk/geek/'
+      # echo $var | sed "s/OldText/NewText/g"
+
+      # Will use {remote} to signify remote server:
+      # echo $line | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/"
+
+      # echo "{remote} ls enter" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/"
+
+      # xx=$(echo "{remote} ls enter" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/")
+      # echo $xx
+      # eval "$xx"
+
+    # --------------------------------------
+
+      # sass options:
+        # https://sass-lang.com/documentation/cli/dart-sass/
+        # sass --w --style=compressed style.container.scss style.min2.css
+        # sass --watch ---poll --style=compressed style.container.scss style.min2.css
+        # --no-source-map
+        # --update
+          # compile stylesheets whose dependencies have been modified more recently than the corresponding CSS file was generated
+        # --embed-sources
+          # embed the entire contents of the Sass files that contributed to the generated CSS in the source map;
+          # this creates a surprisingly very large source file!
+        # --embed-source-map
+          # embed the contents of the source map file in the generated CSS
+          # Thise creates a process css file that is the original + source file; which is only marginally larger;
+
+      # local SCSS="jug/www/static/scss/style.container.scss"
+      # local CSS="jug/www/static/css/style.min2.css"
+
+      # sass --update --no-source-map --style=compressed "$SCSS" "$CSS"
+
+      # # sass --update --no-source-map --style=compressed "jug/www/static/scss/style.container.scss" "jug/www/static/css/style.min2.css"
+
+
+
+      # # local action:
+      # git add --all
+      # # git commit --amend --allow-empty --no-edit
+      #   # --allow-empty may be necessary if you make a change; commit/push;
+      #   # then reverse that exact change and want to commit/push;
+      # git commit --amend --no-edit
+      # git push --force
+
+      # # remote action:
+      # # tmux send-keys -t top "git pull --rebase" enter
+      # # tmux send-keys -t top "url" enter
+      # tmux send-keys -t ${WINDOW}.${PANE} "git reset HEAD --hard" enter
+      #   # Undo scss deletes so that we can pull again;
+      # sleep 1
+      #   # Prob. not necessary, but commands are printed out below;
+      # tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
+      # sleep 1
+
+      # tmux send-keys -t ${WINDOW}.${PANE} "url" enter
+      # sleep 1
+
+      # tmux send-keys -t ${WINDOW}.${PANE} "rm jug/www/static/scss/*" enter
+      #   # Delete the scss folder; but will have to reverse it to git pull again;
+
 }
 
 
@@ -98,31 +126,31 @@ NAME
 
 DESCRIPTION
 
-    Gitwatch can run custom bash commands when git
-    files change. Specifically, it is designed to add,
-    commit, and push changes to your git repo; and
-    then pull git changes from your remote server.
+    Gitwatch can run custom bash commands when git files change.
+    Specifically, it is designed to add, commit, and push changes
+    to your git repo; and then pull git changes from your remote
+    server.
 
-    This would typically require 2 active panes running
-    Tmux.
+    This would typically require 2 active panes on Tmux.
 
-    For example, you would SSH into your remote in
-    pane 0, and run gitwatch in a separate pane. When
-    git changes are detected, gitwatch will commit,
-    push and then pull from your remote in pane 0.
+    For example, you could SSH into your remote in pane 0, and run
+    gitwatch in a separate pane, say pane 1. When git changes are
+    detected, gitwatch will commit, push in pane 1 and pull from
+    your remote in pane 0.
 
-    Gitwatch solves the labor of adding, commiting, and
-    pulling your changes manually. You can work on your
-    git project locally and update your remote
-    automatically.
+    Of course, exactly how you do this depends on your custom
+    commands. You can run whatever commands you like.
 
-    Optionally, can also run a command every N minutes.
-    You can use to this feature to keep sudo active on
-    the remote or for any other custom activities.
+    Custom commands should be saved in a file named gw-command.sh.
+    Gitwatch will look for the command file in the current folder.
+    If not found, then it will try your home directory.
+    You may also specificy a differently named file in any location
+    with the -o flag. eg, "gitwatch -o /path/to/command/file".
 
-    Again, this script typically works in Tmux,
-    assuming you want to run commands in two console
-    windows.
+    Gitwatch solves the labor of adding, commiting, and pulling
+    your changes manually and runnning other custom commands.
+    You can work on your git project locally and update your
+    remote automatically and run custom commands.
 
 EOF
 show_usage
@@ -131,7 +159,7 @@ show_usage
 function show_usage() {
 cat << EOF
 USAGE
-    $ gitwatch [-w W] [-p PANE] [-i INTERVAL] [-c Minutes]
+    $ gitwatch [-w W] [-p PANE] [-i INTERVAL] [-o /path/to/command/file]
 
 EXAMPLE
     $ gitwatch
@@ -140,29 +168,36 @@ EXAMPLE
       # set window to 2; remote pane to 0; interval at 5 seconds.
     $ gitwatch -w vps -p 2
       # set window to vps; remote pane to 2; interval at default, 3 seconds.
-    $ gitwatch -w 1 -p 0 -c 7
+    $ gitwatch -w 1 -p 0 -o ~/$GW_FILE
       # Set window to 1; remote pane to 0; and run custom command every 7 minutes.
 
 FLAGS
     -w WINDOW     Tmux window, denoted by name or number.
     -p PANE       Tmux pane of your remote, denoted by number.
     -i N          Number > 0; Sleep interval between checks in seconds.
-    -c N          Number > 0; Run custom command every N minutes.
+    -o            Path to custom shell command file.
+                  By default, current folder, named: $GW_FILE.
     -h            This help.
+
 EOF
 }
 
 # ---------------------------------------------------------------
 
 
-function calc_cust_command_time() {
+function periodic_command_time() {
 
-    CUST_COMMAND_TIME=$(( 60 * $CUSTOM_COMMAND_EVERY / $INTERVAL ))
-    # CUST_COMMAND_TIME=$(( 60 / $INTERVAL * $CUSTOM_COMMAND_EVERY ))
+    PERIODIC_COMMAND_TIME=$(( 60 * $PERIODIC_COMMAND_INTERVAL / $INTERVAL ))
+    # PERIODIC_COMMAND_TIME=$(( 60 / $INTERVAL * $PERIODIC_COMMAND_INTERVAL ))
       # lsp says this order makes result more precise
-      # How many N second loops are required to get to CUSTOM_COMMAND_EVERY in minutes?
-      # Given N (in seconds), CUSTOM_COMMAND_EVERY (in minutes), how many counter loops it takes to achieve CUSTOM_COMMAND_EVERY
-      # CUST_COMMAND_TIME=$((60/$N * $CUSTOM_COMMAND_EVERY ))
+      # How many N second loops are required to get to PERIODIC_COMMAND_INTERVAL in minutes?
+      # Given N (in seconds), PERIODIC_COMMAND_INTERVAL (in minutes), how many counter loops it takes to achieve PERIODIC_COMMAND_INTERVAL
+      # PERIODIC_COMMAND_TIME=$((60/$N * $PERIODIC_COMMAND_INTERVAL ))
+}
+
+
+function run_periodic_command() {
+    echo -n "🌀 "
 }
 
 
@@ -171,7 +206,7 @@ function check_flags() {
     local OPTIND                               # Make this a local; is the index of the next argument index, not current;
     local regex_isa_num='^[0-9]+$'             # Regex: match whole numbers only;
 
-    while getopts ":hw:p:i:c:" OPTIONS; do       # Loop: Get the next option;
+    while getopts ":hw:p:i:o:" OPTIONS; do       # Loop: Get the next option;
         case "${OPTIONS}" in
 
           w)
@@ -180,7 +215,7 @@ function check_flags() {
           p)
             PANE="${OPTARG}"
             if [[ $PANE -lt 0 || ! "$PANE" =~ $regex_isa_num ]]; then
-                echo "Error: -p should be an integer >= 0."
+                echo "Argghh!! -p should be an integer >= 0."
                 show_usage; exit;
             fi
 
@@ -188,34 +223,57 @@ function check_flags() {
           i)
             INTERVAL="${OPTARG}"
             if [[ $INTERVAL -lt 1 || ! "$INTERVAL" =~ $regex_isa_num ]]; then
-                echo "Error: -i should be an integer > 0."
+                echo "Argghh!! -i should be an integer > 0."
                 show_usage; exit;
             fi
             ;;
-          c)
-            CUSTOM_COMMAND_EVERY="${OPTARG}"
-            if [[ $CUSTOM_COMMAND_EVERY -lt 1 || ! "$CUSTOM_COMMAND_EVERY" =~ $regex_isa_num ]]; then
-                echo "Error: -i should be an integer > 0."
-                show_usage; exit;
+          o)
+            OPEN_FILE_PATH="${OPTARG}"
+            if ! [[ -f "$OPEN_FILE_PATH" ]]; then
+                echo "Argghh!! Bad file path."
+                exit;
             fi
+            SH_FILE=$(cat "$OPEN_FILE_PATH")
             ;;
 
           h)
             show_help; exit;
             ;;
           :)                        # If flag has expected argument omitted;
-            echo "Error: -"${OPTARG}" requires an argument."
+            echo "Argghh!! -"${OPTARG}" requires an argument."
             show_usage; exit;
             ;;
 
           # \?)
           *)                        # If unknown (any other) option:
-            echo "Error: Unknown option."
+            echo "Argghh!! Unknown option."
             show_usage; exit;
             ;;
         esac
     done
 }
+
+function check_SH_FILE() {
+
+  if [[ -z $SH_FILE ]]; then
+
+      # Try to find $GW_FILE in local folder; then $HOME;
+      OPEN_FILE_PATH="./$GW_FILE"
+      if ! [[ -f "$OPEN_FILE_PATH" ]]; then
+          OPEN_FILE_PATH="$HOME/$GW_FILE"
+          if ! [[ -f "$OPEN_FILE_PATH" ]]; then
+              echo "Argghh!! Need $GW_FILE file."
+              echo "Or specify a command file with -o flag."
+              echo
+              show_usage
+              exit
+          fi
+      fi
+      SH_FILE=$(cat "$OPEN_FILE_PATH")
+  fi
+}
+
+
 
 function announce_local_watching() {
     # Just a function to announce that script is ready and watching locally:
@@ -247,16 +305,17 @@ function begin_watch() {
             announce_local_watching
 
         else
-            echo -n ". "
             # (( N_COUNTER+=1 ))  # this works
             # (( N_COUNTER++ ))   # When set -e, seems to hang here; but okay if N=1 initially?? Not sure why;
             (( ++N_COUNTER ))   # this works
 
 
             # run custom command;
-            if [[ "$CUST_COMMAND_TIME" -gt 0 && "$N_COUNTER" -gt "$CUST_COMMAND_TIME" ]]; then
-                run_custom_command
+            if [[ "$PERIODIC_COMMAND_TIME" -gt 0 && "$N_COUNTER" -gt "$PERIODIC_COMMAND_TIME" ]]; then
+                run_periodic_command
                 N_COUNTER=0
+            else
+                echo -n ". "
             fi
 
 
@@ -269,7 +328,8 @@ function begin_watch() {
 # ---------------------------------------------------------------
 
 check_flags "$@"
-calc_cust_command_time
+check_SH_FILE
+periodic_command_time
 git status
 announce_remote_ready
 announce_local_watching
