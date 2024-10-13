@@ -140,6 +140,7 @@ DESCRIPTION
 
     Of course, exactly how you do this depends on your custom
     commands. You can run whatever commands you like.
+    See sample $GW_FILE file.
 
     Custom commands should be saved in a file named gw-command.sh.
     Gitwatch will look for the command file in the current folder.
