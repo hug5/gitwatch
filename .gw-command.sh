@@ -6,12 +6,14 @@ SCSS="jug/www/static/scss/style.container.scss"
 CSS="jug/www/static/css/style.min.css"
 sass --update --no-source-map --style=compressed "$SCSS" "$CSS"
 
+sleep .3
 # Run local git commands
 git add --all
 # git commit --amend --allow-empty --no-edit
   # --allow-empty may be necessary if you make a change; commit/push;
   # then reverse that exact change and want to commit/push;
 git commit --amend --no-edit
+sleep .3
 git push --force
 
 
@@ -32,9 +34,11 @@ git push --force
 # This would be the most concise syntax;
 # When gitwatch sees {remote}, it'll replace it with the full 'tmux-send-keys...' command.
 
+sleep .3
 # Pull git:
 {remote} "git pull --rebase" enter
 
+sleep .3
 # Run a custom alias command named, url:
 {remote} "url" enter
 

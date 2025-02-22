@@ -14,10 +14,10 @@ DESCRIPTION
     to your git repo; and then pull git changes from your remote
     server.
 
-    This would typically require 2 active panes on Tmux.
+    This would commonly require 2 active panes on Tmux.
 
     For example, you could SSH into your remote in pane 0, and run
-    gitwatch in a separate pane, say pane 1. When git changes are
+    gitwatch in a separate pane, pane 1. When git changes are
     detected, gitwatch will commit, push in pane 1 and pull from
     your remote in pane 0.
 

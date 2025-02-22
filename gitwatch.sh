@@ -5,7 +5,7 @@ set -e
 
 # ---------------------------------------------------------------
 
-declare GW_FILE='gw-command.sh'
+declare GW_FILE='.gw-command.sh'
   # The conf command sh file looked for
 
 declare OPEN_FILE_PATH=''
@@ -37,7 +37,13 @@ function do_something() {
 
     while read -r line; do
         line=$(echo "$line" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/")
+          # sed replace '{remote}'' with 'tmux'
+
         eval "$line"
+          # Executes argument as shell command;
+          # eval is a built-in shell command used to evaluate and execute strings as a shell command.
+          # Takes argument, construct a command, and execute it as a shell command; this is in contrast to  the shell executing the result of a command substitution rather than evaluating it.
+
     done <<< "$SH_FILE"
 
     announce_remote_ready
@@ -131,10 +137,10 @@ DESCRIPTION
     to your git repo; and then pull git changes from your remote
     server.
 
-    This would typically require 2 active panes on Tmux.
+    This would commonly require 2 active panes on Tmux.
 
     For example, you could SSH into your remote in pane 0, and run
-    gitwatch in a separate pane, say pane 1. When git changes are
+    gitwatch in a separate pane, pane 1. When git changes are
     detected, gitwatch will commit, push in pane 1 and pull from
     your remote in pane 0.
 
