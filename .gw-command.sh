@@ -1,44 +1,51 @@
-## Sample command file
-# // 2024-10-13
+# Basic generic commands
 
-# Run SASS
-SCSS="jug/www/static/scss/style.container.scss"
-CSS="jug/www/static/css/style.min.css"
-sass --update --no-source-map --style=compressed "$SCSS" "$CSS"
+# if [[ -z $gw_counter ]]; then
+#     export gw_counter=0
+# fi
 
-sleep .3
-# Run local git commands
+# (( gw_counter++ ))
+# echo $gw_counter
+# exit
+
+# Can export variable, but won't keep unless you source the script;
+# Another option is to use a random number; randomly do ca or cm;
+
+
+# Do commit is false, but commit update;
+# Randomly, about 1/30, we commit with message;
+DOCM=false
+  # git commit with wip message (true)? Or git amend (false)?
+# 1 out of 30 chance that we make DOCM=true;
+RAND=$((1 + $RANDOM % 30))
+if [[ RAND -eq 1 ]]; then DOCM=true; fi
+
+
+# local action:
 git add --all
-# git commit --amend --allow-empty --no-edit
-  # --allow-empty may be necessary if you make a change; commit/push;
-  # then reverse that exact change and want to commit/push;
-git commit --amend --no-edit
-sleep .3
-git push --force
+#sleep .3
 
+# can also use -q; but it only prints 3 lines; most verbosity comes from the push --force below;
+if [[ $DOCM == false ]]; then echo "gca"; git commit --amend --no-edit; else echo "gcmm"; git commit -m "wip"; fi
+#sleep .3
 
-#----------------------------------
-
-# Run remote commands on Tmux pane N (Whichever you elected);
-# Normally, assuming the remote pane is pane 0, in window 1, you would do:
-# $ tmux send-keys -t 1.0 "<some command>" enter
-# $ tmux send-keys -t 1.0 "git pull --rebase" enter
-
-# Or use a variable to denote the window and pane:
-# $ tmux send-keys -t ${WINDOW}.${PANE} "git pull --rebase" enter
-# This is better as WINDOW and PANE variables will capture your flag options;
-
-# Or as a shortcut, can replace the tmux specific statement with {remote}
-# So you could do:
-# $ {remote} "git pull --rebase" enter
-# This would be the most concise syntax;
-# When gitwatch sees {remote}, it'll replace it with the full 'tmux-send-keys...' command.
+# Most of the verbosity seems to come from here:
+git push --force -q
 
 sleep .3
-# Pull git:
+
+# ===== Doing this in remote server pane =====
+
+# tmux send-keys -t ${WINDOW}.${PANE} "git reset HEAD --hard" enter
+{remote} "git reset HEAD --hard" enter
+  # {remote} is a placeholder variable; like a template; will be replaced with tmux command
+  # Will be replaced like so in gitwatch.sh file:
+   # line=$(echo "$line" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/")
+  # Undo scss deletes so that we can pull again;
+
+sleep .3
 {remote} "git pull --rebase" enter
 
-sleep .3
-# Run a custom alias command named, url:
+sleep .5
 {remote} "url" enter
 

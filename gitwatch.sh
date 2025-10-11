@@ -7,6 +7,8 @@ set -e
 
 declare GW_FILE='.gw-command.sh'
   # The conf command sh file looked for
+  # This file contains our bash commands;
+  # This is our "do_sometthing()";
 
 declare OPEN_FILE_PATH=''
   # path to custom shell command file
@@ -14,18 +16,29 @@ declare SH_FILE=''
   # Contents of sh file
 declare -i INTERVAL=3
   # in seconds; sleep interval time; eg 3 seconds
+  # This interval should be less than the PERIODIC_COMMAND_INTERVAL
+  # 3sec is default, but can be changed with flag;
 declare -i PERIODIC_COMMAND_INTERVAL=10
   # In minutes; Interval to run custom command;
   # If <= 0, then it's turned off;
+  # No flag for this; this is fixed here;
+declare -i PERIODIC_COMMAND_TIME=0
+  # This value is calculated; set 0 for now;
+  # Since this value can be based on user option,
+   # we don't hard code it;
+  # Given the INTERVAL, how many such intervals
+   # will make it the same time as PERIODIC_COMMAND_INTERVAL?
+  # Calculate like so:
+  # PERIODIC_COMMAND_TIME =
+    # 60 / $INTERVAL * $PERIODIC_COMMAND_INTERVAL
+
 declare -i N_COUNTER=0
   # N counter;
 declare WINDOW=''
   # default unset; active window
 declare PANE=0
   # 0/top pane by default;
-declare -i PERIODIC_COMMAND_TIME=0
-  # Given the INTERVAL, how many such intervals
-  # will make it == PERIODIC_COMMAND_INTERVAL
+
 
 
 # ---------------------------------------------------------------
@@ -37,7 +50,7 @@ function do_something() {
 
     while read -r line; do
         line=$(echo "$line" | sed "s/{remote}/tmux send-keys -t ${WINDOW}.${PANE}/")
-          # sed replace '{remote}'' with 'tmux'
+          # sed replace '{remote}'' with 'tmux send-keys -t ${WINDOW}.${PANE}'
 
         eval "$line"
           # Executes argument as shell command;
@@ -47,6 +60,8 @@ function do_something() {
     done <<< "$SH_FILE"
 
     announce_remote_ready
+      # After running commands, we annount in remote that
+       # we're done and ready again;
 
     # --------------------------------------
 
@@ -128,37 +143,37 @@ function do_something() {
 function show_help() {
 cat << EOF
 NAME
-    Gitwatch: Watch git files for changes and then do something.
+  Gitwatch: Watch git files for changes and then do something.
 
 DESCRIPTION
+  Gitwatch can run custom bash commands when git files change.
+  Specifically, it is designed to add, commit, and push changes
+  to your git repo; and then pull git changes from your remote
+  server.
 
-    Gitwatch can run custom bash commands when git files change.
-    Specifically, it is designed to add, commit, and push changes
-    to your git repo; and then pull git changes from your remote
-    server.
+  This would commonly require 2 active panes on Tmux.
 
-    This would commonly require 2 active panes on Tmux.
+  For example, you could SSH into your remote in pane 0, and run
+  gitwatch in a separate pane, pane 1. When git changes are
+  detected, gitwatch will commit, push in pane 1 and pull from
+  your remote in pane 0.
 
-    For example, you could SSH into your remote in pane 0, and run
-    gitwatch in a separate pane, pane 1. When git changes are
-    detected, gitwatch will commit, push in pane 1 and pull from
-    your remote in pane 0.
+  Of course, exactly how you do this depends on your custom
+  commands. You can run whatever commands you like.
 
-    Of course, exactly how you do this depends on your custom
-    commands. You can run whatever commands you like.
-    See sample $GW_FILE file.
+  See sample $GW_FILE file.
 
-    Custom commands should be saved in a file named gw-command.sh.
-    Gitwatch will look for the command file in the current folder.
-    If not found, then it will try your home directory.
-    You may also specificy a differently named file in any location
-    with the -o flag. eg, "gitwatch -o /path/to/command/file".
+  Custom commands should be saved in a file named '.gw-command.sh'.
+  Gitwatch will look for the command file in the current folder
+  first, then try your home directory.
 
-    Gitwatch solves the labor of adding, commiting, and pulling
-    your changes manually and runnning other custom commands.
-    You can work on your git project locally and update your
-    remote automatically and run custom commands.
+  You may also specify a differently named file in any location
+  with the -o flag. eg, "gitwatch -o /path/to/command/file".
 
+  Gitwatch solves the labor of adding, commiting, and pulling
+  your changes manually and runnning other custom commands.
+  You can work on your git project locally and update your
+  remote automatically and run custom commands.
 EOF
 show_usage
 }
@@ -166,26 +181,27 @@ show_usage
 function show_usage() {
 cat << EOF
 USAGE
-    $ gitwatch [-w W] [-p PANE] [-i INTERVAL] [-o /path/to/command/file]
+  $ gitwatch [-w W] [-p PANE] [-i INTERVAL] [-o /path/to/command/file]
 
 EXAMPLE
-    $ gitwatch
-      # Use default settings: watch 3 second intervals; pull remote from pane 0 in current active window.
-    $ gitwatch -w 2 -p 0 -i 5
-      # set window to 2; remote pane to 0; interval at 5 seconds.
-    $ gitwatch -w vps -p 2
-      # set window to vps; remote pane to 2; interval at default, 3 seconds.
-    $ gitwatch -w 1 -p 0 -o ~/$GW_FILE
-      # Set window to 1; remote pane to 0; and run custom command every 7 minutes.
+  $ gitwatch
+    # Use default settings: watch 3 second intervals; pull remote from pane 0 in current active window.
+  $ gitwatch -w 2 -p 0 -i 5
+    # set window to 2; remote pane to 0; custom command interval at 5 seconds.
+  $ gitwatch -w vps -p 2
+    # set window to vps; remote pane to 2; interval at default, 3 seconds.
+  $ gitwatch -w 1 -p 0 -o ~/$GW_FILE
+    # Set window to 1; remote pane to 0; interval at default, 3 seconds;
+    # Set path to custom shell command file.
 
 FLAGS
-    -w WINDOW     Tmux window, denoted by name or number.
-    -p PANE       Tmux pane of your remote, denoted by number.
-    -i N          Number > 0; Sleep interval between checks in seconds.
-    -o            Path to custom shell command file.
-                  By default, current folder, named: $GW_FILE.
-    -h            This help.
-
+  -w WINDOW     Tmux window, denoted by name or number.
+  -p PANE       Tmux pane of your remote, denoted by number.
+  -i N          Number > 0; Sleep interval between checks in seconds.
+                Default 3 seconds.
+  -o            Path to custom shell command file.
+                By default, current folder, named: $GW_FILE.
+  -h            This help.
 EOF
 }
 
@@ -200,11 +216,15 @@ function periodic_command_time() {
       # How many N second loops are required to get to PERIODIC_COMMAND_INTERVAL in minutes?
       # Given N (in seconds), PERIODIC_COMMAND_INTERVAL (in minutes), how many counter loops it takes to achieve PERIODIC_COMMAND_INTERVAL
       # PERIODIC_COMMAND_TIME=$((60/$N * $PERIODIC_COMMAND_INTERVAL ))
+      # This basically serves as a "ping" for now; it could be for anything;
+      # if PERIODIC_COMMAND_INTERVAL = 10, then should ping every 10 minutes;
 }
 
 
 function run_periodic_command() {
     echo -n "🌀 "
+    # Should ping this every 10 minutes;
+    # This is mostly optional;
 }
 
 

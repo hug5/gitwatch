@@ -24,10 +24,13 @@ DESCRIPTION
     Of course, exactly how you do this depends on your custom
     commands. You can run whatever commands you like.
 
-    Custom commands should be saved in a file named gw-command.sh.
-    Gitwatch will look for the command file in the current folder.
-    If not found, then it will try your home directory.
-    You may also specificy a differently named file in any location
+    See sample $GW_FILE file.
+
+    Custom commands should be saved in a file named '.gw-command.sh'.
+    Gitwatch will look for the command file in the current folder
+    first, then try your home directory.
+
+    You may also specify a differently named file in any location
     with the -o flag. eg, "gitwatch -o /path/to/command/file".
 
     Gitwatch solves the labor of adding, commiting, and pulling
@@ -42,11 +45,12 @@ EXAMPLE
     $ gitwatch
       # Use default settings: watch 3 second intervals; pull remote from pane 0 in current active window.
     $ gitwatch -w 2 -p 0 -i 5
-      # set window to 2; remote pane to 0; interval at 5 seconds.
+      # set window to 2; remote pane to 0; custom command interval at 5 seconds.
     $ gitwatch -w vps -p 2
       # set window to vps; remote pane to 2; interval at default, 3 seconds.
     $ gitwatch -w 1 -p 0 -o ~/$GW_FILE
-      # Set window to 1; remote pane to 0; and run custom command every 7 minutes.
+      # Set window to 1; remote pane to 0; interval at default, 3 seconds;
+      # Set path to custom shell command file.
 
 FLAGS
     -w WINDOW     Tmux window, denoted by name or number.
